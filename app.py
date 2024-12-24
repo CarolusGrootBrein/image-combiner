@@ -2,8 +2,14 @@ from flask import Flask, request, jsonify, send_file
 from PIL import Image
 import requests
 from io import BytesIO
+import os
 
 app = Flask(__name__)
+
+# Basic test route to check if the app is running
+@app.route('/')
+def hello_world():
+    return "Hello, World!"
 
 @app.route('/combine-images', methods=['POST'])
 def combine_images():
@@ -56,5 +62,6 @@ def combine_images():
 
 # Run the server
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
-
+    print("Starting Flask app...")
+    # Make sure Flask listens on the correct port for Render
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
