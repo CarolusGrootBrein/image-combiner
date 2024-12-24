@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_file
 from PIL import Image
 import requests
 from io import BytesIO
+import os
 
 app = Flask(__name__)
 
