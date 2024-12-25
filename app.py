@@ -17,7 +17,7 @@ def combine_images():
         for url in image_urls:
             if not url or url.strip() == "":  # Skip blank or empty URLs
                 print("Skipping blank URL.")
-                continue
+                continue  # Skip to the next URL
             print(f"Fetching base image from: {url}")
             try:
                 response = requests.get(url, timeout=10)
@@ -42,7 +42,7 @@ def combine_images():
         for url in image_urls[1:]:
             if not url or url.strip() == "":  # Skip blank or empty URLs
                 print("Skipping blank URL.")
-                continue
+                continue  # Skip to the next URL
             print(f"Fetching overlay image from: {url}")
             try:
                 response = requests.get(url, timeout=10)
