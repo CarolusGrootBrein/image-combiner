@@ -20,7 +20,12 @@ def combine_images():
                 continue  # Skip to the next URL
             print(f"Fetching base image from: {url}")
             try:
-                response = requests.get(url, timeout=10)
+                # Handle Dropbox links that need direct access (force download)
+                if 'dropbox' in url:
+                    url = url.replace('?dl=0', '?dl=1')  # Force download, which may resolve issues
+                
+                # Fetch the image from the URL
+                response = requests.get(url, timeout=10, allow_redirects=True)
                 if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
                     base_image = Image.open(BytesIO(response.content)).convert("RGBA")
                     print(f"Base image loaded successfully from {url}")
@@ -45,7 +50,12 @@ def combine_images():
                 continue  # Skip to the next URL
             print(f"Fetching overlay image from: {url}")
             try:
-                response = requests.get(url, timeout=10)
+                # Handle Dropbox links that need direct access (force download)
+                if 'dropbox' in url:
+                    url = url.replace('?dl=0', '?dl=1')  # Force download, which may resolve issues
+                
+                # Fetch the image from the URL
+                response = requests.get(url, timeout=10, allow_redirects=True)
                 if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
                     overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
                     canvas = Image.alpha_composite(canvas, overlay_image)
