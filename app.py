@@ -15,17 +15,21 @@ def combine_images():
         # Fetch the first valid image to determine the canvas size
         base_image = None
         for url in image_urls:
-            if not url:  # Skip blank or empty URLs
+            if not url or url.strip() == "":  # Skip blank or empty URLs
                 print("Skipping blank URL.")
                 continue
             print(f"Fetching base image from: {url}")
-            response = requests.get(url)
-            if response.status_code == 200:
-                base_image = Image.open(BytesIO(response.content)).convert("RGBA")
-                print(f"Base image loaded successfully from {url}")
-                break
-            else:
-                print(f"Failed to fetch image from: {url}, Status Code: {response.status_code}")
+            try:
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
+                    base_image = Image.open(BytesIO(response.content)).convert("RGBA")
+                    print(f"Base image loaded successfully from {url}")
+                    break
+                else:
+                    print(f"Invalid base image URL: {url}, Status Code: {response.status_code}")
+            except Exception as e:
+                print(f"Error fetching base image from {url}: {e}")
+                continue
 
         if not base_image:
             return jsonify({'error': 'No valid base image provided'}), 400
@@ -36,19 +40,23 @@ def combine_images():
 
         # Overlay each subsequent image
         for url in image_urls[1:]:
-            if not url:  # Skip blank or empty URLs
+            if not url or url.strip() == "":  # Skip blank or empty URLs
                 print("Skipping blank URL.")
                 continue
             print(f"Fetching overlay image from: {url}")
-            response = requests.get(url)
-            if response.status_code == 200:
-                overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
-                canvas = Image.alpha_composite(canvas, overlay_image)
-                print(f"Overlay image from {url} processed successfully.")
-            else:
-                print(f"Skipping invalid or inaccessible URL: {url}, Status Code: {response.status_code}")
+            try:
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
+                    overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
+                    canvas = Image.alpha_composite(canvas, overlay_image)
+                    print(f"Overlay image from {url} processed successfully.")
+                else:
+                    print(f"Skipping invalid or inaccessible URL: {url}, Status Code: {response.status_code}")
+            except Exception as e:
+                print(f"Error fetching overlay image from {url}: {e}")
+                continue
 
-        # Save the final image in the requested format
+        # Save the final image
         output_format = data.get('format', 'png').lower()  # Default to PNG
         output_filename = f"output.{output_format}"
 
