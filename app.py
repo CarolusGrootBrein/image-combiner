@@ -41,7 +41,9 @@ def combine_images():
 
         # Create a canvas with a white background (same size as base image)
         canvas = Image.new("RGBA", base_image.size, color=(255, 255, 255, 255))  # White background
-        canvas.paste(base_image, (0, 0))  # Place the base image on top of the canvas
+
+        # Place the base image on top of the white canvas
+        canvas.paste(base_image, (0, 0), base_image)  # Ensure transparency handling
 
         # Overlay each subsequent image on top of the base image
         for url in image_urls[1:]:  # Skipping the first image since it's already placed
@@ -53,12 +55,8 @@ def combine_images():
                 if response.status_code == 200:
                     overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
                     
-                    # Create a white background for the overlay image (to handle transparency)
-                    overlay_image_with_white_bg = Image.new("RGBA", overlay_image.size, (255, 255, 255, 255))
-                    overlay_image_with_white_bg.paste(overlay_image, (0, 0), overlay_image)  # Place the image on white background
-                    
-                    # Paste the overlay image on top of the canvas
-                    canvas.paste(overlay_image_with_white_bg, (0, 0), overlay_image_with_white_bg)
+                    # Paste the overlay image on top of the canvas, ensuring it preserves transparency
+                    canvas.paste(overlay_image, (0, 0), overlay_image)  # Use the alpha channel as a mask
                 else:
                     print(f"Failed to fetch overlay image: {url}, Status Code: {response.status_code}")
             except Exception as e:
@@ -105,4 +103,3 @@ def combine_images():
 # Run the server on 0.0.0.0 to ensure external access
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
-
