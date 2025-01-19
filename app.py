@@ -40,7 +40,7 @@ def combine_images():
             return jsonify({'error': 'No valid base image found'}), 400
 
         # Create a canvas with a white background (same size as base image)
-        canvas = Image.new("RGBA", base_image.size, color="white")
+        canvas = Image.new("RGBA", base_image.size, color=(255, 255, 255, 255))  # White background
         canvas.paste(base_image, (0, 0))  # Place the base image on top of the canvas
 
         # Overlay each subsequent image on top of the base image
@@ -99,4 +99,3 @@ def combine_images():
 # Run the server on 0.0.0.0 to ensure external access
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
-
