@@ -52,7 +52,12 @@ def combine_images():
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
                     overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
-                    canvas = Image.alpha_composite(canvas, overlay_image)
+                    
+                    # Create a white background for the overlay image (to handle transparency)
+                    overlay_image_with_white_bg = Image.new("RGBA", overlay_image.size, (255, 255, 255, 255))
+                    overlay_image_with_white_bg.paste(overlay_image, (0, 0), overlay_image)  # Place the image on white background
+                    
+                    canvas = Image.alpha_composite(canvas, overlay_image_with_white_bg)
                 else:
                     print(f"Failed to fetch overlay image: {url}, Status Code: {response.status_code}")
             except Exception as e:
