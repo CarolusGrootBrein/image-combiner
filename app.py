@@ -57,7 +57,8 @@ def combine_images():
                     overlay_image_with_white_bg = Image.new("RGBA", overlay_image.size, (255, 255, 255, 255))
                     overlay_image_with_white_bg.paste(overlay_image, (0, 0), overlay_image)  # Place the image on white background
                     
-                    canvas = Image.alpha_composite(canvas, overlay_image_with_white_bg)
+                    # Paste the overlay image on top of the canvas
+                    canvas.paste(overlay_image_with_white_bg, (0, 0), overlay_image_with_white_bg)
                 else:
                     print(f"Failed to fetch overlay image: {url}, Status Code: {response.status_code}")
             except Exception as e:
