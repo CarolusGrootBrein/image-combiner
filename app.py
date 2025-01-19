@@ -39,9 +39,24 @@ def combine_images():
         if not base_image:
             return jsonify({'error': 'No valid base image found'}), 400
 
-        # Create a white background canvas
+        # Create a canvas with a white background (same size as base image)
         canvas = Image.new("RGBA", base_image.size, color="white")
-        canvas = Image.alpha_composite(canvas, base_image)
+        canvas.paste(base_image, (0, 0))  # Place the base image on top of the canvas
+
+        # Overlay each subsequent image on top of the base image
+        for url in image_urls[1:]:  # Skipping the first image since it's already placed
+            if not url.strip():
+                continue
+            print(f"Fetching overlay image from: {url}")
+            try:
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200:
+                    overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
+                    canvas = Image.alpha_composite(canvas, overlay_image)
+                else:
+                    print(f"Failed to fetch overlay image: {url}, Status Code: {response.status_code}")
+            except Exception as e:
+                print(f"Error fetching overlay image from {url}: {e}")
 
         # Handle text layer if text and font are provided
         if text and font_url:
@@ -62,7 +77,6 @@ def combine_images():
             y_position = canvas.height - text_height - 10  # Add some padding
 
             draw.text((x_position, y_position), text, font=font, fill="black")
-
             print(f"Text '{text}' drawn at position ({x_position}, {y_position})")
 
         # Save the final image
@@ -85,3 +99,4 @@ def combine_images():
 # Run the server on 0.0.0.0 to ensure external access
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
+
