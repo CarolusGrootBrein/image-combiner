@@ -50,16 +50,25 @@ def combine_images():
         # Add text layer if needed, skip if "No" is passed as font URL
         if text and font_url != "No":
             try:
+                # Debugging: Check the font URL
+                print(f"Fetching font from URL: {font_url}")
+
                 # Download the font from the URL
                 if font_url:
                     font_response = requests.get(font_url, timeout=10)
                     if font_response.status_code == 200:
+                        # Debugging: Check the font file size to ensure it's being downloaded
+                        print(f"Font file downloaded successfully, size: {len(font_response.content)} bytes")
                         font = ImageFont.truetype(BytesIO(font_response.content), font_size)
                     else:
+                        print(f"Failed to load font from {font_url} - Status Code: {font_response.status_code}")
                         return jsonify({'error': f"Failed to load font from {font_url}"}), 400
                 else:
                     # Default font (if no font URL is provided, fallback to a basic font)
                     font = ImageFont.load_default()
+
+                # Debugging: Print some information about the font
+                print(f"Font loaded successfully: {font}")
 
                 draw = ImageDraw.Draw(canvas)
 
@@ -72,8 +81,11 @@ def combine_images():
 
                 # Draw the text at the calculated position
                 draw.text((x_position, y_position), text, font=font, fill=(255, 255, 255, 255))
+
+                print(f"Text '{text}' drawn at position ({x_position}, {y_position})")
             except Exception as e:
                 print(f"Error adding text: {e}")
+                return jsonify({'error': f"Error adding text: {e}"}), 500
 
         # Output the image
         output_format = data.get('format', 'png').lower()  # Default to PNG
