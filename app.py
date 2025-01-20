@@ -8,64 +8,80 @@ app = Flask(__name__)
 @app.route('/combine-images', methods=['POST'])
 def combine_images():
     try:
+        # Extract data from the POST request
         data = request.json
         image_urls = data.get('images', [])
-        font_url = data.get('font_url', "")
-        text = data.get('text', "")
+        text = data.get('text', '')
+        font_url = data.get('font', '')
         font_size = data.get('font_size', 180)
-        output_format = data.get('format', 'png').lower()
+        output_format = data.get('format', 'png').lower()  # Default to PNG
 
-        if not image_urls:
-            return jsonify({'error': 'No images provided in the request'}), 400
+        if font_url.lower() == "no":
+            font_url = None
 
         # Fetch base image
         base_image = None
         for url in image_urls:
             if not url.strip():
                 continue
+            print(f"Fetching base image from: {url}")
             try:
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
                     base_image = Image.open(BytesIO(response.content)).convert("RGBA")
                     break
+                else:
+                    print(f"Failed to fetch image: {url}, Status Code: {response.status_code}")
             except Exception as e:
-                return jsonify({'error': f'Error fetching base image: {e}'}), 400
+                print(f"Error fetching base image from {url}: {e}")
 
         if not base_image:
             return jsonify({'error': 'No valid base image found'}), 400
 
-        canvas = Image.new("RGBA", base_image.size, color="white")
-        canvas = Image.alpha_composite(canvas, base_image)
+        # Create a canvas with a white background (same size as base image)
+        canvas = Image.new("RGBA", base_image.size, color=(255, 255, 255, 255))  # White background
 
-        # Add text layer if text is provided
-        if text.lower() != "no" and text:
-            font = ImageFont.truetype("path/to/font.ttf", font_size)
-            draw = ImageDraw.Draw(canvas)
+        # Place the base image on top of the white canvas
+        canvas.paste(base_image, (0, 0), base_image)  # Ensure transparency handling
 
-            # Calculate the text width and height
-            text_width, text_height = draw.textbbox((0, 0), text, font=font)[2:]
-
-            # Set padding and position based on canvas size
-            padding = 50
-            x_position = (canvas.width - text_width) // 2
-            y_position = canvas.height - text_height - padding
-
-            draw.text((x_position, y_position), text, font=font, fill="black")
-
-        # Overlay the other images
+        # Overlay each subsequent image on top of the base image
         for url in image_urls[1:]:
             if not url.strip():
                 continue
+            print(f"Fetching overlay image from: {url}")
             try:
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
                     overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
-                    canvas = Image.alpha_composite(canvas, overlay_image)
+                    # Paste the overlay image on top of the canvas, ensuring it preserves transparency
+                    canvas.paste(overlay_image, (0, 0), overlay_image)  # Use the alpha channel as a mask
+                else:
+                    print(f"Failed to fetch overlay image: {url}, Status Code: {response.status_code}")
             except Exception as e:
-                return jsonify({'error': f'Error fetching overlay image: {e}'}), 400
+                print(f"Error fetching overlay image from {url}: {e}")
 
-        # Save output
+        # Handle text layer if text and font are provided
+        if text and font_url:
+            # Download the font file
+            font_response = requests.get(font_url)
+            font = ImageFont.truetype(BytesIO(font_response.content), font_size)
+
+            # Draw the text
+            draw = ImageDraw.Draw(canvas)
+
+            # Calculate the text size and position (centered horizontally)
+            text_width, text_height = draw.textbbox((0, 0), text, font=font)[2:4]
+
+            # Position text at the bottom and center it
+            x_position = (canvas.width - text_width) // 2
+            y_position = canvas.height - text_height - 40  # 20px padding from the bottom
+
+            # Draw the text
+            draw.text((x_position, y_position), text, font=font, fill="black")
+
+        # Save the final image
         output_path = f"output.{output_format}"
+
         if output_format == 'jpeg':
             canvas = canvas.convert("RGB")
             canvas.save(output_path, 'JPEG')
@@ -75,10 +91,13 @@ def combine_images():
             canvas.save(output_path, 'PNG')
 
         return send_file(output_path, mimetype=f'image/{output_format}')
+
     except Exception as e:
+        print(f"Error: {e}")
         return jsonify({'error': str(e)}), 500
 
-
+# Run the server on 0.0.0.0 to ensure external access
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
+
 
