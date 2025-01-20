@@ -5,6 +5,29 @@ from io import BytesIO
 
 app = Flask(__name__)
 
+def wrap_text(draw, text, font, max_width):
+    # Wrap the text based on the max_width
+    lines = []
+    words = text.split(' ')
+    current_line = []
+
+    for word in words:
+        # Build the line and check the width
+        test_line = ' '.join(current_line + [word])
+        width, _ = draw.textbbox((0, 0), test_line, font=font)[2:4]
+
+        if width <= max_width:
+            current_line.append(word)
+        else:
+            lines.append(' '.join(current_line))
+            current_line = [word]
+
+    # Add any remaining text in the current line
+    if current_line:
+        lines.append(' '.join(current_line))
+
+    return lines
+
 @app.route('/combine-images', methods=['POST'])
 def combine_images():
     try:
@@ -54,7 +77,6 @@ def combine_images():
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
                     overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
-                    
                     # Paste the overlay image on top of the canvas, ensuring it preserves transparency
                     canvas.paste(overlay_image, (0, 0), overlay_image)  # Use the alpha channel as a mask
                 else:
@@ -71,17 +93,22 @@ def combine_images():
             # Draw the text
             draw = ImageDraw.Draw(canvas)
 
-            # Calculate text size using textbbox
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
+            # Wrap text to fit within the fixed 180px width
+            max_width = 180  # Fixed width for the text box (180px)
+            lines = wrap_text(draw, text, font, max_width)
 
-            # Position text at the bottom of the image
-            x_position = (canvas.width - text_width) // 2
-            y_position = canvas.height - text_height - 15  # Add some padding
+            # Start drawing from the bottom, with each line stacked vertically
+            y_position = canvas.height - 20  # Start 20px from the bottom
+            for line in reversed(lines):
+                # Calculate text width and height
+                width, height = draw.textbbox((0, 0), line, font=font)[2:4]
 
-            draw.text((x_position, y_position), text, font=font, fill="black")
-            print(f"Text '{text}' drawn at position ({x_position}, {y_position})")
+                # Position text at the bottom and center it
+                x_position = (canvas.width - width) // 2
+                draw.text((x_position, y_position - height), line, font=font, fill="black")
+
+                # Update y_position for the next line
+                y_position -= height + 5  # 5px space between lines
 
         # Save the final image
         output_path = f"output.{output_format}"
@@ -103,3 +130,4 @@ def combine_images():
 # Run the server on 0.0.0.0 to ensure external access
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
+
