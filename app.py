@@ -94,7 +94,7 @@ def combine_images():
             draw = ImageDraw.Draw(canvas)
 
             # Wrap text to fit within the fixed 180px width
-            max_width = 180  # Fixed width for the text box (180px)
+            max_width = 360  # Fixed width for the text box (180px)
             lines = wrap_text(draw, text, font, max_width)
 
             # Start drawing from the bottom, with each line stacked vertically
