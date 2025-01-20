@@ -5,29 +5,6 @@ from io import BytesIO
 
 app = Flask(__name__)
 
-def wrap_text(draw, text, font, max_width):
-    lines = []
-    words = text.split(' ')
-    current_line = []
-
-    for word in words:
-        test_line = ' '.join(current_line + [word])
-        width, _ = draw.textbbox((0, 0), test_line, font=font)[2:4]
-
-        # Check if the line exceeds the max width
-        if width <= max_width:
-            current_line.append(word)
-        else:
-            if current_line:  # Add the current line to lines before wrapping
-                lines.append(' '.join(current_line))
-            current_line = [word]  # Start new line with the current word
-
-    # Add any remaining text
-    if current_line:
-        lines.append(' '.join(current_line))
-
-    return lines
-
 @app.route('/combine-images', methods=['POST'])
 def combine_images():
     try:
@@ -92,22 +69,15 @@ def combine_images():
             # Draw the text
             draw = ImageDraw.Draw(canvas)
 
-            # Wrap text to fit within the fixed 360px width
-            max_width = 180  # Fixed width for the text box (360px)
-            lines = wrap_text(draw, text, font, max_width)
+            # Calculate the text size and position (centered horizontally)
+            text_width, text_height = draw.textbbox((0, 0), text, font=font)[2:4]
 
-            # Start drawing from the bottom, with each line stacked vertically
-            y_position = canvas.height - 20  # Start 20px from the bottom (margin)
-            for line in reversed(lines):
-                # Calculate text width and height
-                width, height = draw.textbbox((0, 0), line, font=font)[2:4]
+            # Position text at the bottom and center it
+            x_position = (canvas.width - text_width) // 2
+            y_position = canvas.height - text_height - 20  # 20px padding from the bottom
 
-                # Position text at the bottom and center it
-                x_position = (canvas.width - width) // 2
-                draw.text((x_position, y_position - height), line, font=font, fill="black")
-
-                # Update y_position for the next line
-                y_position -= height + 5  # 5px space between lines
+            # Draw the text
+            draw.text((x_position, y_position), text, font=font, fill="black")
 
         # Save the final image
         output_path = f"output.{output_format}"
