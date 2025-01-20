@@ -78,7 +78,7 @@ def combine_images():
 
             # Position text at the bottom of the image
             x_position = (canvas.width - text_width) // 2
-            y_position = canvas.height - text_height - 10  # Add some padding
+            y_position = canvas.height - text_height - 20  # Add some padding
 
             draw.text((x_position, y_position), text, font=font, fill="black")
             print(f"Text '{text}' drawn at position ({x_position}, {y_position})")
