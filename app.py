@@ -74,7 +74,7 @@ def combine_images():
 
             # Position text at the bottom and center it
             x_position = (canvas.width - text_width) // 2
-            y_position = canvas.height - text_height - 40  # 20px padding from the bottom
+            y_position = canvas.height - text_height - 100  # 20px padding from the bottom
 
             # Draw the text
             draw.text((x_position, y_position), text, font=font, fill="black")
