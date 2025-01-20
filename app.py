@@ -6,23 +6,23 @@ from io import BytesIO
 app = Flask(__name__)
 
 def wrap_text(draw, text, font, max_width):
-    # Wrap the text based on the max_width
     lines = []
     words = text.split(' ')
     current_line = []
 
     for word in words:
-        # Build the line and check the width
         test_line = ' '.join(current_line + [word])
         width, _ = draw.textbbox((0, 0), test_line, font=font)[2:4]
 
+        # Check if the line exceeds the max width
         if width <= max_width:
             current_line.append(word)
         else:
-            lines.append(' '.join(current_line))
-            current_line = [word]
+            if current_line:  # Add the current line to lines before wrapping
+                lines.append(' '.join(current_line))
+            current_line = [word]  # Start new line with the current word
 
-    # Add any remaining text in the current line
+    # Add any remaining text
     if current_line:
         lines.append(' '.join(current_line))
 
@@ -39,7 +39,6 @@ def combine_images():
         font_size = data.get('font_size', 180)
         output_format = data.get('format', 'png').lower()  # Default to PNG
 
-        # Default to a font URL if no font is selected
         if font_url.lower() == "no":
             font_url = None
 
@@ -69,7 +68,7 @@ def combine_images():
         canvas.paste(base_image, (0, 0), base_image)  # Ensure transparency handling
 
         # Overlay each subsequent image on top of the base image
-        for url in image_urls[1:]:  # Skipping the first image since it's already placed
+        for url in image_urls[1:]:
             if not url.strip():
                 continue
             print(f"Fetching overlay image from: {url}")
@@ -93,12 +92,12 @@ def combine_images():
             # Draw the text
             draw = ImageDraw.Draw(canvas)
 
-            # Wrap text to fit within the fixed 180px width
-            max_width = 360  # Fixed width for the text box (180px)
+            # Wrap text to fit within the fixed 360px width
+            max_width = 180  # Fixed width for the text box (360px)
             lines = wrap_text(draw, text, font, max_width)
 
             # Start drawing from the bottom, with each line stacked vertically
-            y_position = canvas.height - 20  # Start 20px from the bottom
+            y_position = canvas.height - 20  # Start 20px from the bottom (margin)
             for line in reversed(lines):
                 # Calculate text width and height
                 width, height = draw.textbbox((0, 0), line, font=font)[2:4]
