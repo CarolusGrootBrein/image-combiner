@@ -5,31 +5,61 @@ from io import BytesIO
 
 app = Flask(__name__)
 
+def wrap_text(draw, text, font, max_width):
+    lines = []
+    words = text.split(' ')
+    current_line = ""
+    for word in words:
+        test_line = current_line + ' ' + word if current_line else word
+        width, _ = draw.textbbox((0, 0), test_line, font=font)[2:4]
+
+        if width <= max_width:
+            current_line = test_line
+        else:
+            lines.append(current_line)
+            current_line = word
+    lines.append(current_line)
+    return lines
+
+def draw_wrapped_text(draw, text, font, base_image_width, base_image_height, padding=10):
+    # Calculate max width (60% of image width)
+    max_width = int(base_image_width * 0.6)
+    
+    # Wrap text
+    lines = wrap_text(draw, text, font, max_width)
+    
+    # Position the text at the bottom
+    y_offset = base_image_height - (len(lines) * font.getsize(lines[0])[1] + padding)
+    
+    for line in lines:
+        draw.text((100, y_offset), line, font=font, fill="black")  # Example x_position of 100px
+        y_offset += font.getsize(line)[1] + padding  # Increase by line height and padding
+
 @app.route('/combine-images', methods=['POST'])
 def combine_images():
     try:
         # Extract data from the POST request
         data = request.json
-        image_urls = data.get('images', [])
-        text = data.get('text', '')
-        font_url = data.get('font', '')
-        font_size = data.get('font_size', 180)
+        image_urls = data.get('images', [])  # List of image URLs
+        text = data.get('text', '')  # The text to overlay on the image
+        font_url = data.get('font_url', None)  # The font URL (if any)
+        font_size = data.get('font_size', 50)  # Font size
         output_format = data.get('format', 'png').lower()  # Default to PNG
 
-        if font_url.lower() == "no":
-            font_url = None
+        if not image_urls:
+            return jsonify({'error': 'No images provided in the request'}), 400
 
-        # Fetch base image
+        # Fetch the base image
         base_image = None
         for url in image_urls:
-            if not url.strip():
+            if not url.strip():  # Skip empty or blank URLs
                 continue
             print(f"Fetching base image from: {url}")
             try:
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
                     base_image = Image.open(BytesIO(response.content)).convert("RGBA")
-                    break
+                    break  # Exit loop once a valid base image is found
                 else:
                     print(f"Failed to fetch image: {url}, Status Code: {response.status_code}")
             except Exception as e:
@@ -38,59 +68,51 @@ def combine_images():
         if not base_image:
             return jsonify({'error': 'No valid base image found'}), 400
 
-        # Create a canvas with a white background (same size as base image)
-        canvas = Image.new("RGBA", base_image.size, color=(255, 255, 255, 255))  # White background
+        # Create a white background canvas with the same size as the base image
+        canvas = Image.new("RGBA", base_image.size, color="white")
+        canvas.paste(base_image, (0, 0), base_image)  # Paste the base image onto the white canvas
 
-        # Place the base image on top of the white canvas
-        canvas.paste(base_image, (0, 0), base_image)  # Ensure transparency handling
-
-        # Overlay each subsequent image on top of the base image
+        # Overlay each subsequent image
         for url in image_urls[1:]:
-            if not url.strip():
+            if not url.strip():  # Skip empty or blank URLs
                 continue
             print(f"Fetching overlay image from: {url}")
             try:
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
                     overlay_image = Image.open(BytesIO(response.content)).convert("RGBA")
-                    # Paste the overlay image on top of the canvas, ensuring it preserves transparency
-                    canvas.paste(overlay_image, (0, 0), overlay_image)  # Use the alpha channel as a mask
+                    canvas.paste(overlay_image, (0, 0), overlay_image)  # Composite the image
                 else:
-                    print(f"Failed to fetch overlay image: {url}, Status Code: {response.status_code}")
+                    print(f"Failed to fetch overlay image from: {url}, Status Code: {response.status_code}")
             except Exception as e:
                 print(f"Error fetching overlay image from {url}: {e}")
 
-        # Handle text layer if text and font are provided
+        # Add the text if provided
         if text and font_url:
-            # Download the font file
-            font_response = requests.get(font_url)
-            font = ImageFont.truetype(BytesIO(font_response.content), font_size)
-
-            # Draw the text
+            print(f"Adding text: {text}")
+            # Load font
+            font = ImageFont.truetype(font_url, font_size)
             draw = ImageDraw.Draw(canvas)
 
-            # Calculate the text size and position (centered horizontally)
-            text_width, text_height = draw.textbbox((0, 0), text, font=font)[2:4]
+            # Calculate max width (60% of image width)
+            max_width = int(base_image.width * 0.6)
 
-            # Position text at the bottom and center it
-            x_position = (canvas.width - text_width) // 2
-            y_position = canvas.height - text_height - 20  # 20px padding from the bottom
-
-            # Draw the text
-            draw.text((x_position, y_position), text, font=font, fill="black")
+            # Add the wrapped text to the canvas at the bottom
+            draw_wrapped_text(draw, text, font, base_image.width, base_image.height)
 
         # Save the final image
         output_path = f"output.{output_format}"
-
         if output_format == 'jpeg':
-            canvas = canvas.convert("RGB")
+            canvas = canvas.convert("RGB")  # Convert to RGB to save as JPEG (JPEG does not support transparency)
             canvas.save(output_path, 'JPEG')
         elif output_format == 'pdf':
             canvas.convert("RGB").save(output_path, 'PDF')
         else:
             canvas.save(output_path, 'PNG')
 
-        return send_file(output_path, mimetype=f'image/{output_format}')
+        print(f"Final image saved as {output_path}")
+        mime_type = 'application/pdf' if output_format == 'pdf' else f'image/{output_format}'
+        return send_file(output_path, mimetype=mime_type)
 
     except Exception as e:
         print(f"Error: {e}")
