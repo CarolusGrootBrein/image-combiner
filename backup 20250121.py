@@ -59,7 +59,6 @@ def combine_images():
                     print(f"Failed to fetch overlay image: {url}, Status Code: {response.status_code}")
             except Exception as e:
                 print(f"Error fetching overlay image from {url}: {e}")
-                continue  # Skip to the next image if an error occurs
 
         # Handle text layer if text and font are provided
         if text and font_url:
@@ -100,4 +99,5 @@ def combine_images():
 # Run the server on 0.0.0.0 to ensure external access
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
+
 
